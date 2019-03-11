@@ -1,0 +1,23 @@
+from nltk.stem import WordNetLemmatizer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+import pandas as pd
+lemmatizer = WordNetLemmatizer()
+stopwords=stopwords.words('english')
+data=pd.read_csv('output.csv')
+docs=data.loc[:,'Reviews']
+token_lemmatized=[]
+for token_list in docs:
+    token_list=word_tokenize(token_list)
+    tokens = [lemmatizer.lemmatize(token) for token in token_list]
+    tokens = [token for token in tokens if token not in stopwords]
+    temp_tokens=''
+    for token in tokens:
+        temp_tokens+=token+' '
+    token_lemmatized.append(temp_tokens)
+
+tfidf_vect=TfidfVectorizer(max_df=0.90,min_df=0.02)
+tfidf=tfidf_vect.fit_transform(token_lemmatized)
+terms_sorted_tfidf_desc = sorted(tfidf_vect.vocabulary_.items(), key=lambda x: -x[1])
+keywords=terms_sorted_tfidf_desc[:100]
