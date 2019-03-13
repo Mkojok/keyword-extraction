@@ -1,0 +1,133 @@
+from sklearn.feature_extraction.text import CountVectorizer
+import pandas as pd
+from nltk.corpus import stopwords
+from sklearn.feature_extraction.text import TfidfTransformer
+import re
+from collections import Counter
+
+stopwords=stopwords.words("english")
+
+def sort_on_count(count_matrix):
+    tuples = zip(count_matrix.col, count_matrix.data)
+    return sorted(tuples, key=lambda x: (x[1], x[0]), reverse=True)
+ 
+def extract_topn(feature_names, sorted_items, topn=10):
+    sorted_items = sorted_items[:topn]
+    score_vals = []
+    feature_vals = []  
+    for idx, score in sorted_items:
+        score_vals.append(round(score, 3))
+        feature_vals.append(feature_names[idx])
+    results= {}
+    for idx in range(len(feature_vals)):
+        results[feature_vals[idx]]=score_vals[idx]
+    return results
+
+
+df=pd.read_csv('output.csv')
+train_docs=df.loc[:,'Reviews'][:200].tolist()
+test_docs=df.loc[:,'Reviews'][200:].tolist()
+ 
+cv=CountVectorizer(max_df=0.85,stop_words=stopwords)
+word_count_vector=cv.fit_transform(train_docs)
+
+tfidf_transformer=TfidfTransformer(smooth_idf=True,use_idf=True)
+tfidf_transformer.fit(word_count_vector)
+
+#Creates a list of lists which specifies
+#Each list contains a set of keywords which are unique to the given short text
+feature_names=cv.get_feature_names()
+keywords_list=[]
+for doc in test_docs:
+    tf_idf_vector=tfidf_transformer.transform(cv.transform([doc]))
+    sorted_items=sort_on_count(tf_idf_vector.tocoo())
+    temp_list=[]
+    keywords=extract_topn(feature_names,sorted_items,10)
+    for k,v in keywords.items():
+        temp_list.append(k)
+    keywords_list.append(temp_list)
+
+'''
+--------------Search Keywords----------------
+'''
+
+
+def tokenize(text): 
+    return re.findall(r'\w+', text.lower())
+
+tokenized_words = Counter(tokenize(open('train.txt').read()))
+
+def probability(word, N=sum(tokenized_words.values())): 
+    return tokenized_words[word] / N
+
+def known(words): 
+    return set(w for w in words if w in tokenized_words)
+
+def edit_dist_1(word):
+    letters    = 'abcdefghijklmnopqrstuvwxyz'
+    #Split the word in two halves in all possible ways
+    splits     = [(word[:i], word[i:])    for i in range(len(word) + 1)]
+    #Edit distance for deletion
+    deletes    = [left + right[1:]               for left, right in splits if right]
+    #Edit distance based on transposition
+    transposes = [left + right[1] + right[0] + right[2:] for left, right in splits if len(right)>1]
+    #Edit distance based on replacing
+    replaces   = [left + c + right[1:]           for left, right in splits if right for c in letters]
+    #Edit Distance based on insertion
+    inserts    = [left + c + right               for left, right in splits for c in letters]
+    return set(deletes + transposes + replaces + inserts)
+
+def edit_dist_2(word): 
+    #Find words with edit distance : 2
+    return (e2 for e1 in edit_dist_1(word) for e2 in edit_dist_1(e1))
+
+def find(text,keyword):
+    #Find Keywords in the short text
+    words=tokenize(text)
+    if(keyword in words):
+        return True
+
+test=pd.read_csv('output.csv')
+#Short Text
+short_text=test.loc[:,'Reviews']
+found_key_text=[]
+#Checking only for the keywords in the extracted list at the first index (for first short text only)
+keywords=keywords_list[0]
+for keyword in keywords:
+    if(keyword in tokenized_words):
+        for i in short_text:
+            return_cond=find(i,keyword)
+            if(return_cond==True):
+                found_key_text.append((keyword,i))
+    
+    else:
+        keywords_1=known(edit_dist_1(keyword))
+        for keys in keywords_1:
+            for i in short_text:
+                return_cond=find(i,keys)
+                if(return_cond==True):
+                    found_key_text.append((keys,i))
+        
+        keywords_2=known(edit_dist_2(keyword))
+        for keys in keywords_2:
+            for i in short_text:
+                return_cond=find(i,keys)
+                if(return_cond==True):
+                    found_key_text.append((keys,i))
+
+from collections import OrderedDict
+headers=["Keyword","Text"]
+#Print Keywords and Text
+json_extract=[]
+for keyword,text in found_key_text:
+    print('--------------------------------------------------------')
+    print("Keyword : "+keyword+'\n',"Text : "+text)
+    tmpdict=OrderedDict.fromkeys(headers)
+    tmpdict["Keyword"]=keyword
+    tmpdict["Text"]=text
+    json_extract.append(tmpdict)
+
+#Store Results in Json with Keyword as search keys and Text as short text values
+import json
+with open('result.json', 'w') as fp:
+    json.dump(json_extract, fp)
