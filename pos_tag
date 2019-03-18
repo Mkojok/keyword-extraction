@@ -1,0 +1,28 @@
+from nltk import ngrams
+from nltk.tag import pos_tag
+from nltk.tokenize import word_tokenize,sent_tokenize
+text="the big man opened the small door of the car while eating icecream"
+sentences=sent_tokenize(text)
+words=[]
+for sentence in sentences:
+    words.append(word_tokenize(sentence))
+
+negative_words=['no','not']
+temp_grams=[]
+for temp_sent in words:
+    trigrams=ngrams(temp_sent,3)
+    for grams in trigrams:
+        f=1
+        if('not' in grams):
+            print(grams)
+        for j in negative_words:
+            if(j in grams):
+                f=0
+                break
+            else:
+                print(j)
+                for word,tag in pos_tag(list(grams)):
+                    if((tag=='NN' or tag=='JJ') and word not in temp_grams):
+                        temp_grams.append(word)
+        if(f==0):
+            break
