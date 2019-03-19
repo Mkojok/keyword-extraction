@@ -1,7 +1,7 @@
 from nltk import ngrams
 from nltk.tag import pos_tag
 from nltk.tokenize import word_tokenize,sent_tokenize
-text="the big man opened the small door of the car while eating icecream"
+text="the big eagle yellow fish car not green"
 sentences=sent_tokenize(text)
 words=[]
 for sentence in sentences:
@@ -26,3 +26,5 @@ for temp_sent in words:
                         temp_grams.append(word)
         if(f==0):
             break
+
+print(temp_grams)
