@@ -23,3 +23,7 @@ The code does the following :-
 1.	Keyword extraction – Tf-idf has been used for keyword extraction. The text is loaded into two variables ; train_docs and test_docs . The frequency count of each word is computed on the training document. Based on the count vector trained, values are transformed as TF-IDF.
 Based on the TF-IDF vector and count vector previously trained, keywords are found from the test documents using sort_on_count and extract_topn. 
 2.	Search Keywords – Based on the keywords extracted in the previous part, each keyword is searched for in the short text based on edit distance algorithm.
+
+
+
+Check this for misspellings (https://norvig.com/spell-correct.html)
